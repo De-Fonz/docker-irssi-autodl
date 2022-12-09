@@ -1,0 +1,15 @@
+version: "3.2"
+
+services:
+  irssi-autodl:
+    image: irssi-autodl:local
+    volumes:
+      - "./autodl:/autodl"
+      - "./watch:/watch"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Amsterdam
+      - $HOME/.irssi:/home/user/.irssi:ro
+    tty: true
+    stdin_open: true
