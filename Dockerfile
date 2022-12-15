@@ -5,16 +5,13 @@ FROM alpine:latest
 ENV HOME=/home/user \
   PUID="1000" \
   PGID="1000" \
-  TZ=Europe\Amsterdam \
+  TZ=Europe/Amsterdam \
   IRSSI_VERSION=1.4.3 \
   AUTODL_IRSSI_VERSION=2.6.2
 
 RUN <<EOT
 /bin/sh -c set -eux
-addgroup -g ${PGID} autodl
-adduser -D -u ${PUID} -h ${HOME} autodl -G autodl
 mkdir -p ${HOME}/.irssi	
-chown -R autodl:autodl ${HOME}
 EOT
 
 ENV LANG=C.UTF-8
@@ -53,8 +50,7 @@ RUN apk add --no-cache --virtual .build-deps \
                 | sort -u \
                 | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }')" \
 && apk add --no-network --virtual .irssi-rundeps $runDeps \
-&& apk del --no-network .build-deps \
-&& chown -R autodl:autodl ${HOME}
+&& apk del --no-network .build-deps
 
 RUN apk add --update --no-cache \
     perl-archive-zip \
@@ -64,17 +60,9 @@ RUN apk add --update --no-cache \
     perl-net-ssleay \
     perl-xml-libxml \
     screen \
+    sudo \
     tzdata \
     wget
-
-RUN <<EOT
-mkdir -p /autodl
-mkdir -p /watch
-chown -R autodl:autodl /autodl
-chown -R autodl:autodl /watch
-EOT
-
-USER autodl
 
 RUN <<EOT
 wget https://github.com/autodl-community/autodl-irssi/releases/download/${AUTODL_IRSSI_VERSION}/autodl-irssi-v${AUTODL_IRSSI_VERSION}.zip -O /tmp/autodl-irssi.zip
@@ -87,10 +75,14 @@ touch ${HOME}/.autodl/autodl.cfg
 cd ${HOME}/.autodl
 rm -f autodl2.cfg
 echo 'load perl' >> ${HOME}/.irssi/startup
-mv ~/.autodl/autodl.cfg /autodl
-ln -sf /autodl/autodl.cfg ~/.autodl/autodl.cfg
 EOT
+
+COPY entrypoint.sh /entrypoint.sh
+
+RUN chmod a+x /entrypoint.sh \
+&& addgroup -g ${PGID} autodl \
+&& adduser -D -u ${PUID} -h ${HOME} autodl -G autodl
 
 VOLUME [ "/autodl", "/watch" ]
 
-ENTRYPOINT ["screen","-U","-S","irssi","irssi"]
+ENTRYPOINT [ "/entrypoint.sh" ]
